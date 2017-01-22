@@ -48,9 +48,10 @@ def build_note_response(title, output, reprompt_text, should_end_session, note):
             'type': 'SSML',
             'ssml': """
                     <speak>
+                        {speaktext}
                         <audio src="{src}" />
                     </speak>
-            """.format(src=get_mp3(note))
+            """.format(speaktext=output, src=get_mp3(note))
         },
         'card': {
             'type': 'Simple',
@@ -59,8 +60,13 @@ def build_note_response(title, output, reprompt_text, should_end_session, note):
         },
         'reprompt': {
             'outputSpeech': {
-                'type': 'PlainText',
-                'text': reprompt_text
+                'type': 'SSML',
+                'ssml': """
+                        <speak>
+                            {speaktext}
+                            <audio src="{src}" />
+                        </speak>
+                """.format(speaktext=reprompt_text, src=get_mp3(note))
             }
         },
         'shouldEndSession': should_end_session
@@ -109,73 +115,82 @@ def set_difficulty_in_session(intent, session):
     session_attributes = {}
     should_end_session = False
 
+    speechlet_response = None
+
     if 'Difficulty' in intent['slots']:
         session_difficulty = intent['slots']['Difficulty']['value']
         session_attributes = {"difficulty": session_difficulty}
+        session['attributes'] = session_attributes
+        
 
         speech_output = "You have chosen {0}.".format(session_difficulty)
                         
-        reprompt_text = "Do you want to play Easy, Medium, or Hard?"
+        reprompt_text = speech_output
 
         # Here's where we start playing notes.
-        play_new_note(intent, session)
+        set_new_note_in_session(intent, session)
+        speechlet_response = build_note_response(card_title,
+                speech_output, reprompt_text, should_end_session, session['attributes']['note'])
 
     else:
         speech_output = "Difficulties are Easy, Medium, or Hard." \
                         "Please try again."
         reprompt_text = speech_output
+        speechlet_response = build_speechlet_response(session_attributes, card_title,
+                speech_output, reprompt_text, should_end_session)
 
-    return build_response(session_attributes, build_speechlet_response(
-        card_title, speech_output, reprompt_text, should_end_session))
+    return build_response(session_attributes, speechlet_response)
 
 
 def set_new_note_in_session(intent, session):
     difficulties = {
-            "Easy"   : "CDE".split(),
-            "Medium" : "CDEFG".split(),
-            "Hard"   : "ABCDEFG".split()
+            "easy"   : list("CDE"),
+            "medium" : list("CDEFG"),
+            "hard"   : list("ABCDEFG")
     }
 
     session_difficulty = session['attributes']['difficulty'] 
-    if session_diffulty not in difficulties:
+    if session_difficulty not in difficulties:
         return
 
-    session['attributes']['note'] = random.choice(difficulties[session_difficulty])
+    session['attributes']['note'] = choice(difficulties[session_difficulty])
 
 
 def guess_note_in_session(intent, session):
     card_title = intent['name']
-    session_attributes = session['session_attributes']
-    should_end_session = False
+    if 'attributes' not in session:
+        return get_welcome_response()
 
+    should_end_session = False
+    session_attributes = session['attributes']
     session_difficulty = session['attributes']['difficulty']
 
     if not 'session_difficulty' in session:
         # this shouldn't happen. Exit everything
+        print("Something wrong happened.")
         speech_output = "Something wrong happened. Closing."
         reprompt_text = speech_output
-        should_end_session = True
 
-    guessed_note = intent['slots']['Note']
+    guessed_note = intent['slots']['Note']['value']
     session_note = session['attributes']['note']
-    if guessed_note == session_note:
-        speech_output = "Correct! Guess this next one."
+    if guessed_note.lower() == session_note.lower():
+        speech_output = "Correct!"
         set_new_note_in_session(intent, session)
 
     else:
-        speech_output = "Incorrect. Guess again"
+        speech_output = "Incorrect. Guess again."
 
     reprompt_text = "Guess the note."
 
-    speechlet_response = build_note_response(session_attributes, card_title,
-            speech_output, reprompt_text, should_end_session)
+    speechlet_response = build_note_response(card_title,
+            speech_output, reprompt_text, should_end_session, session['attributes']['note'])
     return build_response(session_attributes, speechlet_response)
 
 
 def get_mp3(note):
     note = note.lower()
-    host = "INSERTHOSTNAME"
-    return host + "/piano_{0}.mp3".format(note)
+    host = "HOSTNAME_HERE"
+    return host + "/piano_{0}5.mp3".format(note)
 
 
 
@@ -213,7 +228,7 @@ def on_intent(intent_request, session):
 
     # Dispatch to your skill's intent handlers
     if intent_name == "StartGame":
-        return set_color_in_session(intent, session)
+        return get_welcome_response()
     elif intent_name == "SelectDifficulty":
         return set_difficulty_in_session(intent, session)
     elif intent_name == "GuessNote":
