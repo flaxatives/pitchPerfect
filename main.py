@@ -8,6 +8,7 @@ http://amzn.to/1LGWsLG
 """
 
 from __future__ import print_function
+from random import choice
 
 
 # --------------- Helpers that build all of the responses ----------------------
@@ -38,6 +39,31 @@ def build_response(session_attributes, speechlet_response):
         'version': '1.0',
         'sessionAttributes': session_attributes,
         'response': speechlet_response
+    }
+
+
+def build_note_response(title, output, reprompt_text, should_end_session, note):
+    return {
+        'outputSpeech': {
+            'type': 'SSML',
+            'ssml': """
+                    <speak>
+                        <audio src="{src}" />
+                    </speak>
+            """.format(src=get_mp3(note))
+        },
+        'card': {
+            'type': 'Simple',
+            'title': "SessionSpeechlet - " + title,
+            'content': "SessionSpeechlet - " + output
+        },
+        'reprompt': {
+            'outputSpeech': {
+                'type': 'PlainText',
+                'text': reprompt_text
+            }
+        },
+        'shouldEndSession': should_end_session
     }
 
 
@@ -74,10 +100,6 @@ def handle_session_end_request():
         card_title, speech_output, None, should_end_session))
 
 
-def create_favorite_color_attributes(favorite_color):
-    return {"favoriteColor": favorite_color}
-
-
 def set_difficulty_in_session(intent, session):
     """ Sets the color in the session and prepares the speech to reply to the
     user.
@@ -107,18 +129,18 @@ def set_difficulty_in_session(intent, session):
         card_title, speech_output, reprompt_text, should_end_session))
 
 
-def play_new_note(intent, session):
-    session_attributes = session['session_attributes']
+def set_new_note_in_session(intent, session):
+    difficulties = {
+            "Easy"   : "CDE".split(),
+            "Medium" : "CDEFG".split(),
+            "Hard"   : "ABCDEFG".split()
+    }
 
-    speechlet_response = build_speechlet_response(card_title, speech_output, reprompt_text, should_end_session))
-    speechlet_response['outputSpeech'] = {
-                'type': "SSML",
-                'ssml': """
-<speak>
-    <audio src="{src}" />
-</speak>
-                """.format(src=get_mp3(note))
-    return build_response(session_attributes, speechlet_response)
+    session_difficulty = session['attributes']['difficulty'] 
+    if session_diffulty not in difficulties:
+        return
+
+    session['attributes']['note'] = random.choice(difficulties[session_difficulty])
 
 
 def guess_note_in_session(intent, session):
@@ -126,40 +148,34 @@ def guess_note_in_session(intent, session):
     session_attributes = session['session_attributes']
     should_end_session = False
 
-    if 'session_difficulty' in session:
-        session_difficulty = session['attributes']['difficulty']
+    session_difficulty = session['attributes']['difficulty']
 
-        if intent['slots']['Note'] == note:
-            speech_output = "Correct! Guess this next one.".
-            play_new_note(intent, session)
-        else:
-            speech_output = "Incorrect. Guess again".
-            play_same_note(intent, session)
-
-        reprompt_text = "Guess the note."
-    else:
+    if not 'session_difficulty' in session:
         # this shouldn't happen. Exit everything
         speech_output = "Something wrong happened. Closing."
         reprompt_text = speech_output
         should_end_session = True
 
-    speechlet_response = build_speechlet_response(card_title, speech_output, reprompt_text, should_end_session))
-    speechlet_response['outputSpeech'] = {
-                'type': "SSML",
-                'ssml': """
-<speak>
-    <audio src="{src}" />
-</speak>
-                """.format(src=get_mp3(note))
-        }
+    guessed_note = intent['slots']['Note']
+    session_note = session['attributes']['note']
+    if guessed_note == session_note:
+        speech_output = "Correct! Guess this next one."
+        set_new_note_in_session(intent, session)
 
+    else:
+        speech_output = "Incorrect. Guess again"
+
+    reprompt_text = "Guess the note."
+
+    speechlet_response = build_note_response(session_attributes, card_title,
+            speech_output, reprompt_text, should_end_session)
     return build_response(session_attributes, speechlet_response)
 
 
 def get_mp3(note):
     note = note.lower()
-    host = "INSERTHOSTHERE"
-    return host + "piano_{0}.mp3".format(note)
+    host = "INSERTHOSTNAME"
+    return host + "/piano_{0}.mp3".format(note)
 
 
 
