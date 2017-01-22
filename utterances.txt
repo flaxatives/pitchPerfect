@@ -1,0 +1,6 @@
+StartGame start pitch training
+StopGuessing stop game
+StopGuessing stop playing
+StopGuessing finish game
+StopGuessing finish
+

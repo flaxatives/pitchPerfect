@@ -1,0 +1,29 @@
+{
+    "intents":
+    [
+        {
+            "intent": "StartGame"
+        },
+        {
+            "intent": "SelectDifficulty",
+            "slots": [
+            {
+                "name": "Difficulty",
+                "type": "LIST_OF_DIFFICULTIES"
+            }   
+            ]
+        },
+        {
+            "intent": "GuessNote",
+            "slots": [
+            {
+                "name": "Note",
+                "type": "LIST_OF_NOTES"
+            }   
+            ]
+        },
+        {
+            "intent": "StopGuessing"
+        }
+    ]
+}
