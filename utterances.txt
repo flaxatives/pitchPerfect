@@ -1,4 +1,8 @@
 StartGame start pitch training
+StartGame start game
+StartGame start
+GuessNote {Note}
+SelectDifficulty {Difficulty}
 StopGuessing stop game
 StopGuessing stop playing
 StopGuessing finish game
